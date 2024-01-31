@@ -45,21 +45,20 @@ class DocumentSearch:
 
         tokens_query=[token.lower() for token in query.split()]
 
-        for document in results_title:
-            for token in query:
-                self.index_file_title[token][document]
+        # Summing the count of the tokens in the title
+        info_token_sum={}
+        info_token_pos={}
+        for doc in results_title:
+            sum=0
+            info_token_pos_doc=[]
+            for token in tokens_query:
+                sum+=self.index_file_title[token][doc]['count']
+                info_token_pos_doc.append(self.index_file_title[token][doc]['positions'])
+            info_token_sum[doc]=sum
+            info_token_pos[doc]=info_token_pos_doc
+        
+        return info_token_sum, info_token_pos
 
-        # Définir les poids pour chaque caractéristique
-        weight_token_count = 0.6
-        weight_position_score = 0.4
-
-        # Calculer le score linéaire en fonction des caractéristiques (à adapter selon vos besoins)
-        score = (
-            weight_token_count * len(word_tokenize(document['title'].lower())) +
-            weight_position_score * 0  # Placeholder for position score, adapt as needed
-        )
-
-        return score
 
 if __name__ == "__main__":
 
@@ -76,6 +75,8 @@ if __name__ == "__main__":
 
     print(search_results_title)
     #print(len(search_results_title))
+
+    print(document_search.linear_ranking(user_query))
 
     # Afficher les résultats
     #for result in search_results:
