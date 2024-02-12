@@ -8,7 +8,37 @@ import time
 nltk.download('stopwords')
 
 class DocumentSearch:
+    """
+    DocumentSearch class provides functionality for searching and analyzing documents using an inverted index approach.
+
+    Parameters:
+    - documents (str): Path to the JSON file containing the documents to be indexed.
+    - index_file_title (str): Path to the JSON file containing the inverted index for document titles.
+    - index_file_content (str, optional): Path to the JSON file containing the inverted index for document content.
+        If not provided, content-related features will not be available.
+
+    Attributes:
+    - documents (list): List of documents loaded from the specified JSON file.
+    - index_file_title (dict): Inverted index for document titles, loaded from the specified JSON file.
+    - index_file_content (dict or None): Inverted index for document content, loaded from the specified JSON file.
+        If content index is not provided, set to None.
+    - avg_doc_len_title (float): Average document length calculated from the title index.
+    - avg_doc_len_content (float or None): Average document length calculated from the content index.
+        If content index is not provided, set to None.
+
+    Note: The class assumes that the documents, title index, and content index follow a specific JSON format.
+    """
+
     def __init__(self, documents, index_file_title, index_file_content=None):
+        """
+        Initializes the DocumentSearch object with the provided parameters.
+
+        Parameters:
+        - documents (str): Path to the JSON file containing the documents to be indexed.
+        - index_file_title (str): Path to the JSON file containing the inverted index for document titles.
+        - index_file_content (str, optional): Path to the JSON file containing the inverted index for document content.
+          If not provided, content-related features will not be available.
+        """
         self.documents = self.read_json(documents)
         self.index_file_title = self.read_json(index_file_title)
         if index_file_content is not None:
@@ -21,11 +51,35 @@ class DocumentSearch:
                                   
 
     def read_json(self, json_file):
+        """
+        Reads a JSON file from the given file path and returns the loaded data as a dictionary.
+
+        Parameters:
+        - json_file (str): Path to the JSON file to be read.
+
+        Returns:
+        - Union[dict, None]: Loaded data as a dictionary or None if the file cannot be read or is not in a valid JSON format.
+        """
         with open(json_file, 'r') as file:
             index = json.load(file)
         return index
 
     def search(self, query, type='and'):
+        """
+        Searches for documents based on the given query using an inverted index approach.
+
+        Parameters:
+        - query (str): The search query to be processed.
+        - type (str, optional): The search type, either 'and' or 'or'. Defaults to 'and'.
+
+        Returns:
+        - Tuple[Set[int], Set[int]]: Two sets representing the document IDs matching the query for titles and content, respectively.
+          Returns an empty set for titles and content if no results are found for each category.
+
+        Note:
+        - The search is case-insensitive, and the query is tokenized into lowercase tokens.
+        - If content index is not available, only title search results will be returned.
+        """
         tokens_query=[token.lower() for token in query.split()]
         docs_title=[]
         for token in tokens_query:
@@ -61,6 +115,20 @@ class DocumentSearch:
         return results_title, results_content
     
     def intersection_or_union(self, docs_field, type):
+        """
+        Performs the intersection or union operation on a list of document IDs based on the specified type.
+
+        Parameters:
+        - docs_field (List[List[int]]): List of lists containing document IDs.
+        - type (str): The operation type, either 'and' or 'or'.
+
+        Returns:
+        - Set[int]: Set of document IDs resulting from the intersection or union operation.
+
+        Note:
+        - The intersection operation returns the common document IDs across all lists.
+        - The union operation returns all unique document IDs present in any of the lists.
+        """
         if type.lower()=='and':
             results_field=set(docs_field[0]).intersection(*docs_field)
         if type.lower()=='or':
@@ -68,6 +136,21 @@ class DocumentSearch:
         return results_field
         
     def linear_ranking(self, query, type='and'):
+        """
+        Performs linear ranking on documents based on a combination of positional and BM25 scores.
+
+        Parameters:
+        - query (str): The search query to be processed.
+        - type (str, optional): The search type, either 'and' or 'or'. Defaults to 'and'.
+
+        Returns:
+        - Optional[str]: If results are found, saves the ranked results in 'results.json' and returns a success message.
+                    If no results are found, returns None.
+
+        Note:
+        - The ranking combines positional scores from both title and content searches, along with BM25 scores.
+        - Results are saved in 'results.json' file.
+        """
         results_title, results_content = self.search(query, type)
 
         if not results_title and not results_content:
@@ -119,6 +202,22 @@ class DocumentSearch:
         return "The results are in results.json"
 
     def calculate_bm25_score(self, token, doc_id, field, k1=1.2, b=0.75):
+        """
+        Calculates the BM25 score for a token in a document and a specific field (title or content).
+
+        Parameters:
+        - token (str): The token for which the BM25 score is calculated.
+        - doc_id (int): The document ID for which the score is calculated.
+        - field (str): The field in the document (either 'title' or 'content').
+        - k1 (float, optional): BM25 parameter controlling term saturation. Defaults to 1.2.
+        - b (float, optional): BM25 parameter controlling the length normalization. Defaults to 0.75.
+
+        Returns:
+        - float: The calculated BM25 score for the given token, document, and field.
+
+        Note:
+        - BM25 score calculation is based on the token's term frequency (tf), document length, document frequency, and corpus size.
+        """
         field_params = {'title': (self.index_file_title, self.avg_doc_len_title),
                         'content': (self.index_file_content, self.avg_doc_len_content)}
 
@@ -140,7 +239,21 @@ class DocumentSearch:
         return idf * term1
 
     def ranking_pos_nb(self, info_token_sum, info_token_pos, tokens_query):
+        """
+        Performs ranking based on positional information and token counts in documents.
 
+        Parameters:
+        - info_token_sum (Dict[int, float]): Dictionary with document IDs as keys and initial positional sum as values.
+        - info_token_pos (Dict[int, List[List[int]]]): Dictionary with document IDs as keys and token positions as values.
+        - tokens_query (List[str]): List of tokens in the query.
+
+        Returns:
+        - Dict[int, float]: Updated dictionary with document IDs as keys and final positional scores as values.
+
+        Note:
+        - The ranking considers both the sum of token counts and the order of token positions in documents.
+        - The final positional score is a weighted combination of token count and order.
+        """
         for doc in info_token_sum:
             sum = 0
             info_token_pos_doc = []
@@ -157,6 +270,21 @@ class DocumentSearch:
         return info_token_sum
 
     def nb_tokens_and_pos_in_doc(self, results, tokens_query, type):
+        """
+        Calculates the sum of token counts and token positions in documents based on search results and query tokens.
+
+        Parameters:
+        - results (Set[int]): Set of document IDs for which the information is calculated.
+        - tokens_query (List[str]): List of tokens in the query.
+        - type (str): The type of information to calculate ('title' or 'content').
+
+        Returns:
+        - Tuple[Dict[int, float], Dict[int, List[List[int]]]]: Two dictionaries representing the sum of token counts and
+          token positions for each document in the specified type.
+
+        Note:
+        - The sum of token counts is weighted based on the presence of French stopwords in the query.
+        """
         if type == 'title':
             index = self.index_file_title
         elif type == 'content':
@@ -186,6 +314,18 @@ class DocumentSearch:
         return info_token_sum, info_token_pos
 
     def same_order(self, list_positions):
+        """
+        Checks if the positions in the provided list of lists maintain the same order.
+
+        Parameters:
+        - list_positions (List[List[int]]): List of lists containing token positions.
+
+        Returns:
+        - bool: True if the positions maintain the same order, False otherwise.
+
+        Note:
+        - The function iterates through the list of lists, checking if each subsequent list maintains the same order.
+        """
         min_pos=-1
         for list_positions_doc in list_positions: #in range(1, len(list_positions)): # liste_positions_doc in list_positions:
             new_pos = [element for element in list_positions_doc if element > min_pos]
@@ -193,21 +333,3 @@ class DocumentSearch:
                 return False
             min_pos=min(new_pos)
         return True
-
-if __name__ == "__main__":
-
-    # Créer une instance de DocumentSearch
-    document_search = DocumentSearch('documents.json', 'title_pos_index.json', 'content_pos_index.json')
-
-    # Lire la requête depuis le terminal
-    user_query = input("Entrez votre requête : ")
-
-    # Effectuer la recherche
-    #search_results_title = document_search.search(user_query, type='or')
-
-    #print(search_results_title)
-    #print(len(search_results_title))
-    t0=time.time()
-
-    document_search.linear_ranking(user_query, type='and')
-    print(time.time()-t0)
