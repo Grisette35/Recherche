@@ -9,7 +9,7 @@ This Python-based project provides a simple way to create a minimal search engin
 
 The `moteur_recherche.py` script defines the core functionality of the search engine creation. It utilizes the `nltk' library to have the set of French stopwords.
 
-The creation of the search engine follows these steps: tokenizing the user query, using the same tokenizing as in the positional indexes (here, splitting on spaces) and the tokens from the query are searched in the indexes (title and content if there is a content index).
+The creation of the search engine follows these steps: tokenizing the user query, using the same tokenizing as in the positional indexes (here, splitting on spaces) and the tokens from the query are searched in the indexes (title and content if there is a content index). All the documents found are then ranked thanks to a linear ranking based on the positions of the tokens and their counts, including a BM25 score. The stopwords have less weights than the other words since their count in the document is divided by 4 and the count of non-stopwords in multiplied by 2. The positions of the tokens are taken into account by checking if their positions in the document is the same as in the query. Finally, there are 2 different scores calculated for each kind of score (BM25 and positions+count scores), one for the title and the other one for the content (if the index for the content is given). The score for the title has more weight than the score for the content (70% for the title, 30% for the content).
 
 ### 2. Example usage (`main.py`)
 
