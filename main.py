@@ -17,6 +17,8 @@ def parse_args():
                         type=str,
                         help='Path to the JSON file containing the token index for the content.')
     parser.add_argument('--type_of_search',
+                        nargs='?',
+                        const='and',
                         type=str,
                         help='Type of the search: can be "and" or "or". If "and", all the documents \
                             that have all the tokens from you query are selected. Otherwise, all the \
